@@ -1,0 +1,87 @@
+services:
+  # Frontend (Nginx serving static files)
+  frontend:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html
+    networks:
+      - frontend-net
+    depends_on:
+      backend:
+        condition: service_healthy
+    # Keep resource usage under control
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+
+  # Backend API (bridges frontend and database)
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "3001:3001"
+    networks:
+      - backend-net
+      - frontend-net
+    environment:
+      - PORT=3001
+      - DATABASE_URL=postgres://user:secret@db:5432/app
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
+    # Lock down container filesystem and Linux capabilities
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  # PostgreSQL Database (isolated from frontend)
+  db:
+    image: postgres:alpine
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB=app
+    volumes:
+      # Persist DB data and run initial schema on first boot
+      - postgres-data:/var/lib/postgresql
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d app"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    # Block privilege escalation while allowing Postgres startup scripts to run
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  postgres-data:
+
+networks:
+  frontend-net:
+  backend-net:

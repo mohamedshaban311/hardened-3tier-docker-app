@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker Fullstack Demo</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 80px; background: #0f172a; color: #f8fafc; }
+        .card { background: #1e293b; padding: 40px; border-radius: 12px; display: inline-block; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border: 1px solid #334155; }
+        button { background: #38bdf8; color: #0f172a; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; transition: 0.2s;}
+        button:hover { background: #0ea5e9; }
+        ul { list-style: none; padding: 0; margin-top: 20px; text-align: left; }
+        li { background: #334155; margin: 8px 0; padding: 10px 16px; border-radius: 6px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🐳 Multi-Container Docker Application</h1>
+        <p id="status">Checking connection...</p>
+        <ul id="items-list"></ul>
+        <button onclick="fetchData()">Refresh Items</button>
+    </div>
+
+    <script>
+        function fetchData() {
+            // Direct request to backend port 3001
+            fetch('http://localhost:3001/api/items')
+                .then(res => res.json())
+                .then(res => {
+                    document.getElementById('status').innerText = 'Connected to PostgreSQL via Backend! 🚀';
+                    const list = document.getElementById('items-list');
+                    list.innerHTML = '';
+                    res.data.forEach(item => {
+                        const li = document.createElement('li');
+                        li.textContent = `#${item.id} - ${item.name}`;
+                        list.appendChild(li);
+                    });
+                })
+                .catch(err => {
+                    console.error('Fetch error:', err);
+                    document.getElementById('status').innerText = 'Failed to connect to backend!';
+                });
+        }
+
+        fetchData();
+    </script>
+</body>
+</html>
